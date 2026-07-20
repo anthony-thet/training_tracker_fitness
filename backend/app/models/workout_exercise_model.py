@@ -1,5 +1,3 @@
-# app/models/workout_exercise_model.py
-
 from sqlalchemy import ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

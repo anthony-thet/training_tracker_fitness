@@ -45,10 +45,11 @@ def update_program_route(
 ):
     return update_program(db, program_id, program_in)
 
-@router.delete("/{program_id}", response_model=ProgramRead)
+@router.delete("/{program_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_program_route(
         program_id: int,
         db: Session = Depends(get_db),
 ):
-    return delete_program(db, program_id)
+    delete_program(db, program_id)
+    return None
 
