@@ -8,7 +8,12 @@ from app.models.program_model import Program
 from app.models.user_model import User
 from app.schemas.program_schema import ProgramCreate, ProgramUpdate
 
-def create_program(db: Session, program_in: ProgramCreate) -> Program:
+
+def create_program(
+        db: Session,
+        program_in: ProgramCreate
+) -> Program:
+
     user = db.query(User).filter(User.id == program_in.user_id).first()
 
     if user is None:
@@ -33,6 +38,7 @@ def create_program(db: Session, program_in: ProgramCreate) -> Program:
 
     return program
 
+
 def list_programs(
     db: Session,
     user_id: int | None = None,
@@ -40,6 +46,7 @@ def list_programs(
     limit: int = 100,
     offset: int = 0,
 ) -> list[Program]:
+
     query = db.query(Program)
 
     if user_id is not None:
@@ -56,7 +63,12 @@ def list_programs(
         .all()
     )
 
-def get_program(db: Session, program_id: int) -> Program:
+
+def get_program(
+        db: Session,
+        program_id: int
+) -> Program:
+
     program = db.query(Program).filter(Program.id == program_id).first()
 
     if program is None:
@@ -67,11 +79,13 @@ def get_program(db: Session, program_id: int) -> Program:
 
     return program
 
+
 def update_program(
         db: Session,
         program_id: int,
         program_in: ProgramUpdate
 ) -> Program:
+
     program = get_program(db, program_id)
 
     update_data = program_in.model_dump(exclude_unset=True)
@@ -91,7 +105,12 @@ def update_program(
 
     return program
 
-def delete_program(db: Session, program_id: int) -> None:
+
+def delete_program(
+        db: Session,
+        program_id: int
+) -> None:
+
     program = get_program(db, program_id)
 
     db.delete(program)

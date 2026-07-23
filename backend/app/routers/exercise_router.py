@@ -56,4 +56,3 @@ def delete_exercise_route(
     db: Session = Depends(get_db),
 ):
     delete_exercise(db, exercise_id)
-    return None

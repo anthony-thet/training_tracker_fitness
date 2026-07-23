@@ -6,7 +6,11 @@ from app.models.exercise_model import Exercise
 from app.schemas.exercise_schema import ExerciseCreate, ExerciseUpdate, ExerciseRead
 
 
-def create_exercise(db: Session, exercise_in: ExerciseCreate) -> Exercise:
+def create_exercise(
+        db: Session,
+        exercise_in: ExerciseCreate
+) -> Exercise:
+
     exercise = Exercise(**exercise_in.model_dump())
 
     db.add(exercise)
@@ -44,7 +48,11 @@ def list_exercises(
     )
 
 
-def get_exercise(db: Session, exercise_id: int) -> Exercise:
+def get_exercise(
+        db: Session,
+        exercise_id: int
+) -> Exercise:
+
     exercise = db.query(Exercise).filter(Exercise.id == exercise_id).first()
 
     if exercise is None:
@@ -61,6 +69,7 @@ def update_exercise(
     exercise_id: int,
     exercise_in: ExerciseUpdate
 ) -> Exercise:
+
     exercise = get_exercise(db, exercise_id)
 
     update_data = exercise_in.model_dump(exclude_unset=True)
@@ -81,7 +90,11 @@ def update_exercise(
     return exercise
 
 
-def delete_exercise(db: Session, exercise_id: int) -> None:
+def delete_exercise(
+        db: Session,
+        exercise_id: int
+) -> None:
+
     exercise = get_exercise(db, exercise_id)
 
     db.delete(exercise)
