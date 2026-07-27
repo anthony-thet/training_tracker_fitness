@@ -20,7 +20,7 @@ def create_program_week_route(
     return create_program_week(db, program_id, program_week_in)
 
 
-@router.get("/programs/{program_id}/weeks", response_model=List[ProgramWeekRead])
+@router.get("/programs/{program_id}/weeks", response_model=list[ProgramWeekRead])
 def list_program_weeks_route(
         program_id: int,
         db: Session = Depends(get_db),
@@ -28,7 +28,7 @@ def list_program_weeks_route(
     return list_program_weeks(db, program_id)
 
 
-@router.get("/program_week/{week_id}", response_model=ProgramWeekRead)
+@router.get("/program-weeks/{week_id}", response_model=ProgramWeekRead)
 def get_program_week_route(
         week_id: int,
         db: Session = Depends(get_db),
@@ -36,7 +36,7 @@ def get_program_week_route(
     return get_program_week(db, week_id)
 
 
-@router.patch("/program_week/{week_id}", response_model=ProgramWeekUpdate)
+@router.patch("/program-weeks/{week_id}", response_model=ProgramWeekRead)
 def update_program_week_route(
         week_id: int,
         program_week_in: ProgramWeekUpdate,
@@ -45,7 +45,7 @@ def update_program_week_route(
     return update_program_week(db, week_id, program_week_in)
 
 
-@router.delete("/program_week/{week_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/program-weeks/{week_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_program_week_route(
         week_id: int,
         db: Session = Depends(get_db),

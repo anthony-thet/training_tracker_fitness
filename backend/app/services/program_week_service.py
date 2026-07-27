@@ -33,7 +33,12 @@ def list_program_weeks(
 
     get_program(db, program_id)
 
-    program_weeks = db.query(ProgramWeek).filter(Program.id == program_id).order_by(ProgramWeek.week_number).all()
+    program_weeks = (
+        db.query(ProgramWeek)
+        .filter(ProgramWeek.program_id == program_id)
+        .order_by(ProgramWeek.week_number)
+        .all()
+    )
 
     return program_weeks
 
@@ -43,12 +48,16 @@ def get_program_week(
         week_id: int
 ) -> ProgramWeek:
 
-    program_week = db.query(ProgramWeek).filter(ProgramWeek.id == week_id).first()
+    program_week = (
+        db.query(ProgramWeek)
+        .filter(ProgramWeek.id == week_id)
+        .first()
+    )
 
     if program_week is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Program week with id {week_id} not found",
+            detail="Program week not found",
         )
 
     return program_week

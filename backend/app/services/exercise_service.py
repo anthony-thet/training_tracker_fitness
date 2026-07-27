@@ -34,18 +34,21 @@ def list_exercises(
     limit: int = 100,
     offset: int = 0
 ) -> list[Exercise]:
-    query = db.query(Exercise)
+
+    exercises = db.query(Exercise)
 
     if search:
-        query = query.filter(Exercise.name.ilike(f"%{search}%"))
+        exercises = exercises.filter(Exercise.name.ilike(f"%{search}%"))
 
-    return (
-        query
+    exercises = (
+        exercises
         .order_by(Exercise.name)
         .offset(offset)
         .limit(limit)
         .all()
     )
+
+    return exercises
 
 
 def get_exercise(

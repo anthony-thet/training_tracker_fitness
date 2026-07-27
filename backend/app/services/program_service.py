@@ -14,7 +14,11 @@ def create_program(
         program_in: ProgramCreate
 ) -> Program:
 
-    user = db.query(User).filter(User.id == program_in.user_id).first()
+    user = (
+        db.query(User)
+        .filter(User.id == program_in.user_id)
+        .first()
+    )
 
     if user is None:
         raise HTTPException(
@@ -47,21 +51,24 @@ def list_programs(
     offset: int = 0,
 ) -> list[Program]:
 
-    query = db.query(Program)
+    programs = db.query(Program)
+
 
     if user_id is not None:
-        query = query.filter(Program.user_id == user_id)
+        programs = programs.filter(Program.user_id == user_id)
 
     if search:
-        query = query.filter(Program.name.ilike(f"%{search}%"))
+        programs = programs.filter(Program.name.ilike(f"%{search}%"))
 
-    return (
-        query
+    programs = (
+        programs
         .order_by(Program.created_at.desc())
         .offset(offset)
         .limit(limit)
         .all()
     )
+
+    return programs
 
 
 def get_program(
@@ -69,7 +76,11 @@ def get_program(
         program_id: int
 ) -> Program:
 
-    program = db.query(Program).filter(Program.id == program_id).first()
+    program = (
+        db.query(Program)
+        .filter(Program.id == program_id)
+        .first()
+    )
 
     if program is None:
         raise HTTPException(
