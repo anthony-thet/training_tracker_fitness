@@ -51,4 +51,3 @@ def delete_program_route(
         db: Session = Depends(get_db),
 ):
     delete_program(db, program_id)
-

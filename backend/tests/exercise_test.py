@@ -61,16 +61,17 @@ def test_create_exercise():
 
 
 def test_list_exercises():
-    exercise = create_test_exercise(base_name := unique_exercise_name("Squat"))
+    exercise_name = unique_exercise_name("Squat")
+    exercise = create_test_exercise(name=exercise_name)
 
-    response = client.get("/exercises/")
+    response = client.get(f"/exercises/?search={exercise_name}")
 
     assert response.status_code == 200
 
     data = response.json()
     assert isinstance(data, list)
     assert any(item["id"] == exercise["id"] for item in data)
-    assert any(item["name"] == base_name for item in data)
+    assert any(item["name"] == exercise_name for item in data)
 
 
 def test_list_exercises_with_search():
