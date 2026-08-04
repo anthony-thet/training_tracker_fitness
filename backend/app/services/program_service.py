@@ -1,9 +1,10 @@
 from typing import List
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 
+from app.models import ProgramWeek, WorkoutDay, WorkoutExercise
 from app.models.program_model import Program
 from app.models.user_model import User
 from app.schemas.program_schema import ProgramCreate, ProgramUpdate
@@ -69,6 +70,36 @@ def list_programs(
     )
 
     return programs
+
+
+def get_program_detail(
+    db: Session,
+    program_id: int,
+) -> Program:
+    program = (
+        db.query(Program)
+        .options(
+            selectinload(Program.program_weeks)
+            .selectinload(ProgramWeek.workout_days)
+            .selectinload(WorkoutDay.workout_exercises)
+            .selectinload(WorkoutExercise.planned_sets),
+
+            selectinload(Program.program_weeks)
+            .selectinload(ProgramWeek.workout_days)
+            .selectinload(WorkoutDay.workout_exercises)
+            .selectinload(WorkoutExercise.exercise),
+        )
+        .filter(Program.id == program_id)
+        .first()
+    )
+
+    if program is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Program not found",
+        )
+
+    return program
 
 
 def get_program(

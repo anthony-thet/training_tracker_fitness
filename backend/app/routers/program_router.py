@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.schemas.program_detail_schema import ProgramDetailRead
 from app.schemas.program_schema import ProgramRead, ProgramCreate, ProgramUpdate
-from app.services.program_service import create_program, delete_program, update_program, list_programs, get_program
+from app.services.program_service import create_program, delete_program, update_program, list_programs, get_program, \
+    get_program_detail
 
 router = APIRouter(
     prefix="/programs",
@@ -27,6 +29,14 @@ def list_programs_route(
         db: Session = Depends(get_db),
 ):
     return list_programs(db, user_id, search, limit, offset)
+
+
+@router.get("/{program_id}/detail", response_model=ProgramDetailRead)
+def get_program_detail_route(
+    program_id: int,
+    db: Session = Depends(get_db),
+):
+    return get_program_detail(db, program_id)
 
 
 @router.get("/{program_id}", response_model=ProgramRead)
