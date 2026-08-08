@@ -1,4 +1,4 @@
-from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy import Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -6,6 +6,10 @@ from app.database import Base
 
 class PlannedSet(Base):
     __tablename__ = "planned_sets"
+
+    __table_args__ = (
+        UniqueConstraint("workout_exercise_id", "set_order", name="uq_planned_set_order"),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True

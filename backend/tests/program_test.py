@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from app.database import SessionLocal
+from tests.test_database import TestingSessionLocal
 from app.main import app
 from app.models.user_model import User
 
@@ -10,7 +10,7 @@ client = TestClient(app)
 
 
 def create_test_user() -> User:
-    db = SessionLocal()
+    db = TestingSessionLocal()
 
     try:
         unique_id = uuid4().hex

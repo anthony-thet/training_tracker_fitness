@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -8,6 +8,10 @@ from app.database import Base
 
 class WorkoutDay(Base):
     __tablename__ = "workout_days"
+
+    __table_args__ = (
+        UniqueConstraint("program_week_id", "day_order", name="uq_workout_day_order"),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True

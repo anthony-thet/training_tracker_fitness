@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Integer, Text
+from sqlalchemy import ForeignKey, Integer, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -6,6 +6,10 @@ from app.database import Base
 
 class ProgramWeek(Base):
     __tablename__ = "program_weeks"
+
+    __table_args__ = (
+        UniqueConstraint("program_id", "week_number", name="uq_program_week_number"),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True

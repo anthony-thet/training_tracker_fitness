@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Integer, Text
+from sqlalchemy import ForeignKey, Integer, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -6,6 +6,10 @@ from app.database import Base
 
 class WorkoutExercise(Base):
     __tablename__ = "workout_exercises"
+
+    __table_args__ = (
+        UniqueConstraint("workout_day_id", "exercise_order", name="uq_workout_exercise_order"),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True

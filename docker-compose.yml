@@ -4,12 +4,25 @@ services:
     container_name: training_tracker_db
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: workout_app
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: training_tracker
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - training_tracker_data:/var/lib/postgresql/data
+
+  test_db:
+    image: postgres:16
+    container_name: training_tracker_test_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: training_tracker_test
+    ports:
+      - "5434:5432"
+    volumes:
+      - training_tracker_test_data:/var/lib/postgresql/data
 
 volumes:
-  postgres_data:
+  training_tracker_data:
+  training_tracker_test_data:
