@@ -9,10 +9,11 @@ from app.services.program_service import get_program
 def create_program_week(
         db: Session,
         program_id: int,
-        program_week_in: ProgramWeekCreate
+        program_week_in: ProgramWeekCreate,
+        user_id: int,
 ) -> ProgramWeek:
 
-    program = get_program(db, program_id)
+    program = get_program(db, program_id, user_id)
 
     program_week = ProgramWeek(
         program_id=program.id,
@@ -28,10 +29,11 @@ def create_program_week(
 
 def list_program_weeks(
         db: Session,
-        program_id: int
+        program_id: int,
+        user_id: int,
 ) -> list[ProgramWeek]:
 
-    get_program(db, program_id)
+    get_program(db, program_id, user_id)
 
     program_weeks = (
         db.query(ProgramWeek)
@@ -45,12 +47,17 @@ def list_program_weeks(
 
 def get_program_week(
         db: Session,
-        week_id: int
+        week_id: int,
+        user_id: int,
 ) -> ProgramWeek:
 
     program_week = (
         db.query(ProgramWeek)
-        .filter(ProgramWeek.id == week_id)
+        .join(Program, ProgramWeek.program_id == Program.id)
+        .filter(
+            ProgramWeek.id == week_id,
+            Program.user_id == user_id,
+        )
         .first()
     )
 
@@ -66,10 +73,11 @@ def get_program_week(
 def update_program_week(
         db: Session,
         week_id: int,
-        program_week_in: ProgramWeekUpdate
+        program_week_in: ProgramWeekUpdate,
+        user_id: int,
 ) -> ProgramWeek:
 
-    program_week = get_program_week(db, week_id)
+    program_week = get_program_week(db, week_id, user_id)
 
     update_data = program_week_in.model_dump(exclude_unset=True)
 
@@ -84,10 +92,11 @@ def update_program_week(
 
 def delete_program_week(
         db: Session,
-        week_id: int
+        week_id: int,
+        user_id: int,
 ) -> None:
 
-    program_week = get_program_week(db, week_id)
+    program_week = get_program_week(db, week_id, user_id)
 
     db.delete(program_week)
     db.commit()

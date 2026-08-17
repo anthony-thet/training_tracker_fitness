@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models import PlannedSet
+from app.models import PlannedSet, User, WorkoutExercise, WorkoutDay, ProgramWeek, Program
 from app.schemas.planned_set_schema import PlannedSetCreate, PlannedSetUpdate
 from app.services.workout_exercise_service import get_workout_exercise
 
@@ -10,9 +10,11 @@ def create_planned_set(
     db: Session,
     workout_exercise_id: int,
     planned_set_in: PlannedSetCreate,
+    user_id: int,
+
 ) -> PlannedSet:
 
-    workout_exercise = get_workout_exercise(db, workout_exercise_id)
+    workout_exercise = get_workout_exercise(db, workout_exercise_id, user_id)
 
     planned_set = PlannedSet(
         workout_exercise_id=workout_exercise.id,
@@ -29,9 +31,10 @@ def create_planned_set(
 def list_planned_sets(
     db: Session,
     workout_exercise_id: int,
+    user_id: int,
 ) -> list[PlannedSet]:
 
-    get_workout_exercise(db, workout_exercise_id)
+    get_workout_exercise(db, workout_exercise_id, user_id)
 
     planned_sets = (
         db.query(PlannedSet)
@@ -46,11 +49,19 @@ def list_planned_sets(
 def get_planned_set(
     db: Session,
     set_id: int,
+    user_id: int,
 ) -> PlannedSet:
 
     planned_set = (
         db.query(PlannedSet)
-        .filter(PlannedSet.id == set_id)
+        .join(WorkoutExercise, PlannedSet.workout_exercise_id == WorkoutExercise.id)
+        .join(WorkoutDay, WorkoutExercise.workout_day_id == WorkoutDay.id)
+        .join(ProgramWeek, WorkoutDay.program_week_id == ProgramWeek.id)
+        .join(Program, ProgramWeek.program_id == Program.id)
+        .filter(
+            PlannedSet.id == set_id,
+            Program.user_id == user_id
+        )
         .first()
     )
 
@@ -67,9 +78,10 @@ def update_planned_set(
     db: Session,
     set_id: int,
     planned_set_in: PlannedSetUpdate,
+    user_id: int,
 ) -> PlannedSet:
 
-    planned_set = get_planned_set(db, set_id)
+    planned_set = get_planned_set(db, set_id, user_id)
 
     update_data = planned_set_in.model_dump(exclude_unset=True)
 
@@ -85,9 +97,10 @@ def update_planned_set(
 def delete_planned_set(
     db: Session,
     set_id: int,
+    user_id: int,
 ) -> None:
 
-    planned_set = get_planned_set(db, set_id)
+    planned_set = get_planned_set(db, set_id, user_id)
 
     db.delete(planned_set)
     db.commit()

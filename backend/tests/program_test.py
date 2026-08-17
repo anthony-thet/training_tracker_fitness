@@ -2,40 +2,12 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from tests.test_database import TestingSessionLocal
 from app.main import app
-from app.models.user_model import User
 
 client = TestClient(app)
 
 
-def create_test_user() -> User:
-    db = TestingSessionLocal()
-
-    try:
-        unique_id = uuid4().hex
-
-        user = User(
-            email=f"programtest_{unique_id}@example.com",
-            username=f"programtestuser_{unique_id}",
-            password_hash="fake_hashed_password",
-        )
-
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-        # Detach the object so we can safely use user.id after closing the session.
-        db.expunge(user)
-
-        return user
-
-    finally:
-        db.close()
-
-
 def create_test_program(
-    user_id: int,
     name: str | None = None,
     description: str = "Test program description",
 ):
@@ -44,7 +16,6 @@ def create_test_program(
     response = client.post(
         "/programs/",
         json={
-            "user_id": user_id,
             "name": program_name,
             "description": description,
         },
@@ -54,13 +25,12 @@ def create_test_program(
     return response.json()
 
 
-def test_create_program():
-    user = create_test_user()
+def test_create_program(override_current_user):
+    user = override_current_user
 
     response = client.post(
         "/programs/",
         json={
-            "user_id": user.id,
             "name": f"Powerlifting Block {uuid4().hex}",
             "description": "Bench-focused strength block",
         },
@@ -77,16 +47,13 @@ def test_create_program():
     assert "updated_at" in data
 
 
-def test_list_programs():
-    user = create_test_user()
-
+def test_list_programs(override_current_user):
     program = create_test_program(
-        user_id=user.id,
         name=f"Hypertrophy Block {uuid4().hex}",
         description="Volume-focused block",
     )
 
-    response = client.get(f"/programs/?user_id={user.id}")
+    response = client.get("/programs/")
 
     assert response.status_code == 200
 
@@ -96,18 +63,15 @@ def test_list_programs():
     assert any(item["name"] == program["name"] for item in data)
 
 
-def test_list_programs_with_search():
-    user = create_test_user()
-
+def test_list_programs_with_search(override_current_user):
     program_name = f"Searchable Bench Program {uuid4().hex}"
 
     create_test_program(
-        user_id=user.id,
         name=program_name,
         description="Search test program",
     )
 
-    response = client.get(f"/programs/?user_id={user.id}&search={program_name}")
+    response = client.get(f"/programs/?search={program_name}")
 
     assert response.status_code == 200
 
@@ -117,11 +81,10 @@ def test_list_programs_with_search():
     assert any(item["name"] == program_name for item in data)
 
 
-def test_get_program():
-    user = create_test_user()
+def test_get_program(override_current_user):
+    user = override_current_user
 
     program = create_test_program(
-        user_id=user.id,
         name=f"Strength Block {uuid4().hex}",
         description="General strength block",
     )
@@ -137,18 +100,17 @@ def test_get_program():
     assert data["description"] == "General strength block"
 
 
-def test_get_program_not_found():
+def test_get_program_not_found(override_current_user):
     response = client.get("/programs/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Program not found"
 
 
-def test_update_program():
-    user = create_test_user()
+def test_update_program(override_current_user):
+    user = override_current_user
 
     program = create_test_program(
-        user_id=user.id,
         name=f"Old Program Name {uuid4().hex}",
         description="Old description",
     )
@@ -170,11 +132,10 @@ def test_update_program():
     assert data["user_id"] == user.id
 
 
-def test_update_program_partial_keeps_existing_fields():
-    user = create_test_user()
+def test_update_program_partial_keeps_existing_fields(override_current_user):
+    user = override_current_user
 
     program = create_test_program(
-        user_id=user.id,
         name=f"Partial Update Program {uuid4().hex}",
         description="Original description",
     )
@@ -195,7 +156,7 @@ def test_update_program_partial_keeps_existing_fields():
     assert data["user_id"] == user.id
 
 
-def test_update_program_not_found():
+def test_update_program_not_found(override_current_user):
     response = client.patch(
         "/programs/999999",
         json={
@@ -207,11 +168,8 @@ def test_update_program_not_found():
     assert response.json()["detail"] == "Program not found"
 
 
-def test_delete_program():
-    user = create_test_user()
-
+def test_delete_program(override_current_user):
     program = create_test_program(
-        user_id=user.id,
         name=f"Program To Delete {uuid4().hex}",
         description="This should be deleted",
     )
@@ -225,22 +183,20 @@ def test_delete_program():
     assert get_response.status_code == 404
 
 
-def test_delete_program_not_found():
+def test_delete_program_not_found(override_current_user):
     response = client.delete("/programs/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Program not found"
 
 
-def test_create_program_with_missing_user_returns_404():
+def test_create_program_without_auth_returns_401():
     response = client.post(
         "/programs/",
         json={
-            "user_id": 999999,
-            "name": f"Invalid Program {uuid4().hex}",
-            "description": "This user does not exist",
+            "name": f"Unauthenticated Program {uuid4().hex}",
+            "description": "This should fail without auth",
         },
     )
 
-    assert response.status_code == 404
-    assert response.json()["detail"] == "User not found"
+    assert response.status_code == 401

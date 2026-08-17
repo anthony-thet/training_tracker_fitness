@@ -2,41 +2,15 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from tests.test_database import TestingSessionLocal
 from app.main import app
-from app.models import User
 
 client = TestClient(app)
 
 
-def create_test_user() -> User:
-    db = TestingSessionLocal()
-
-    try:
-        unique_id = uuid4().hex
-
-        user = User(
-            email=f"programdetailtest_{unique_id}@example.com",
-            username=f"programdetailtestuser_{unique_id}",
-            password_hash="fake_hashed_password",
-        )
-
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        db.expunge(user)
-
-        return user
-
-    finally:
-        db.close()
-
-
-def create_test_program(user_id: int):
+def create_test_program():
     response = client.post(
         "/programs/",
         json={
-            "user_id": user_id,
             "name": f"Program Detail Test {uuid4().hex}",
             "description": "Program used for detail endpoint tests",
         },
@@ -135,9 +109,9 @@ def create_test_planned_set(
     return response.json()
 
 
-def test_get_program_detail_returns_nested_program():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_get_program_detail_returns_nested_program(override_current_user):
+    user = override_current_user
+    program = create_test_program()
 
     program_week = create_test_program_week(
         program_id=program["id"],
@@ -252,9 +226,9 @@ def test_get_program_detail_returns_nested_program():
     assert set_orders == sorted(set_orders)
 
 
-def test_get_program_detail_with_empty_program_returns_empty_program_weeks():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_get_program_detail_with_empty_program_returns_empty_program_weeks(override_current_user):
+    user = override_current_user
+    program = create_test_program()
 
     response = client.get(f"/programs/{program['id']}/detail")
 
@@ -271,8 +245,14 @@ def test_get_program_detail_with_empty_program_returns_empty_program_weeks():
     assert data["program_weeks"] == []
 
 
-def test_get_program_detail_not_found():
+def test_get_program_detail_not_found(override_current_user):
     response = client.get("/programs/999999/detail")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Program not found"
+
+
+def test_get_program_detail_without_auth_returns_401():
+    response = client.get("/programs/999999/detail")
+
+    assert response.status_code == 401

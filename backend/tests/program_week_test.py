@@ -2,41 +2,15 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from tests.test_database import TestingSessionLocal
 from app.main import app
-from app.models import User
 
 client = TestClient(app)
 
 
-def create_test_user() -> User:
-    db = TestingSessionLocal()
-
-    try:
-        unique_id = uuid4().hex
-
-        user = User(
-            email=f"programweektest_{unique_id}@example.com",
-            username=f"programweektestuser_{unique_id}",
-            password_hash="fake_hashed_password",
-        )
-
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        db.expunge(user)
-
-        return user
-
-    finally:
-        db.close()
-
-
-def create_test_program(user_id: int):
+def create_test_program():
     response = client.post(
         "/programs/",
         json={
-            "user_id": user_id,
             "name": f"Program Week Test Program {uuid4().hex}",
             "description": "Program used for program week tests",
         },
@@ -63,9 +37,8 @@ def create_test_program_week(
     return response.json()
 
 
-def test_create_program_week():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_create_program_week(override_current_user):
+    program = create_test_program()
 
     response = client.post(
         f"/programs/{program['id']}/weeks",
@@ -84,7 +57,7 @@ def test_create_program_week():
     assert data["notes"] == "Intro accumulation week"
 
 
-def test_create_program_week_with_missing_program_returns_404():
+def test_create_program_week_with_missing_program_returns_404(override_current_user):
     response = client.post(
         "/programs/999999/weeks",
         json={
@@ -97,9 +70,8 @@ def test_create_program_week_with_missing_program_returns_404():
     assert response.json()["detail"] == "Program not found"
 
 
-def test_list_program_weeks():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_list_program_weeks(override_current_user):
+    program = create_test_program()
 
     week_1 = create_test_program_week(
         program_id=program["id"],
@@ -127,11 +99,9 @@ def test_list_program_weeks():
     assert week_2["id"] in week_ids
 
 
-def test_list_program_weeks_only_returns_weeks_for_that_program():
-    user = create_test_user()
-
-    program_1 = create_test_program(user.id)
-    program_2 = create_test_program(user.id)
+def test_list_program_weeks_only_returns_weeks_for_that_program(override_current_user):
+    program_1 = create_test_program()
+    program_2 = create_test_program()
 
     program_1_week = create_test_program_week(
         program_id=program_1["id"],
@@ -156,9 +126,8 @@ def test_list_program_weeks_only_returns_weeks_for_that_program():
     assert program_2_week["id"] not in week_ids
 
 
-def test_list_program_weeks_orders_by_week_number():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_list_program_weeks_orders_by_week_number(override_current_user):
+    program = create_test_program()
 
     create_test_program_week(
         program_id=program["id"],
@@ -188,16 +157,15 @@ def test_list_program_weeks_orders_by_week_number():
     assert week_numbers == sorted(week_numbers)
 
 
-def test_list_program_weeks_with_missing_program_returns_404():
+def test_list_program_weeks_with_missing_program_returns_404(override_current_user):
     response = client.get("/programs/999999/weeks")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Program not found"
 
 
-def test_get_program_week():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_get_program_week(override_current_user):
+    program = create_test_program()
 
     week = create_test_program_week(
         program_id=program["id"],
@@ -216,16 +184,15 @@ def test_get_program_week():
     assert data["notes"] == "Week to get"
 
 
-def test_get_program_week_not_found():
+def test_get_program_week_not_found(override_current_user):
     response = client.get("/program-weeks/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Program week not found"
 
 
-def test_update_program_week():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_update_program_week(override_current_user):
+    program = create_test_program()
 
     week = create_test_program_week(
         program_id=program["id"],
@@ -250,9 +217,8 @@ def test_update_program_week():
     assert data["notes"] == "Updated notes"
 
 
-def test_update_program_week_partial_keeps_existing_fields():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_update_program_week_partial_keeps_existing_fields(override_current_user):
+    program = create_test_program()
 
     week = create_test_program_week(
         program_id=program["id"],
@@ -276,7 +242,7 @@ def test_update_program_week_partial_keeps_existing_fields():
     assert data["notes"] == "Only notes changed"
 
 
-def test_update_program_week_not_found():
+def test_update_program_week_not_found(override_current_user):
     response = client.patch(
         "/program-weeks/999999",
         json={
@@ -288,9 +254,8 @@ def test_update_program_week_not_found():
     assert response.json()["detail"] == "Program week not found"
 
 
-def test_delete_program_week():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_delete_program_week(override_current_user):
+    program = create_test_program()
 
     week = create_test_program_week(
         program_id=program["id"],
@@ -308,8 +273,20 @@ def test_delete_program_week():
     assert get_response.json()["detail"] == "Program week not found"
 
 
-def test_delete_program_week_not_found():
+def test_delete_program_week_not_found(override_current_user):
     response = client.delete("/program-weeks/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Program week not found"
+
+
+def test_create_program_week_without_auth_returns_401():
+    response = client.post(
+        "/programs/999999/weeks",
+        json={
+            "week_number": 1,
+            "notes": "This should fail without auth",
+        },
+    )
+
+    assert response.status_code == 401

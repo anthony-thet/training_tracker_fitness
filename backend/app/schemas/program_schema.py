@@ -7,7 +7,7 @@ class ProgramBase(BaseModel):
     description: str | None = None
 
 class ProgramCreate(ProgramBase):
-    user_id: int
+    pass
 
 class ProgramUpdate(BaseModel):
     name: str | None = None

@@ -2,41 +2,15 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from tests.test_database import TestingSessionLocal
 from app.main import app
-from app.models import User
 
 client = TestClient(app)
 
 
-def create_test_user() -> User:
-    db = TestingSessionLocal()
-
-    try:
-        unique_id = uuid4().hex
-
-        user = User(
-            email=f"workoutexercisetest_{unique_id}@example.com",
-            username=f"workoutexercisetestuser_{unique_id}",
-            password_hash="fake_hashed_password",
-        )
-
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        db.expunge(user)
-
-        return user
-
-    finally:
-        db.close()
-
-
-def create_test_program(user_id: int):
+def create_test_program():
     response = client.post(
         "/programs/",
         json={
-            "user_id": user_id,
             "name": f"Workout Exercise Test Program {uuid4().hex}",
             "description": "Program used for workout exercise tests",
         },
@@ -115,20 +89,18 @@ def create_test_workout_exercise(
 
 
 def create_test_workout_day_setup():
-    user = create_test_user()
-    program = create_test_program(user.id)
+    program = create_test_program()
     week = create_test_program_week(program["id"])
     day = create_test_workout_day(week["id"])
 
     return {
-        "user": user,
         "program": program,
         "week": week,
         "day": day,
     }
 
 
-def test_create_workout_exercise():
+def test_create_workout_exercise(override_current_user):
     setup = create_test_workout_day_setup()
     exercise = create_test_exercise(name=f"Bench Press {uuid4().hex}")
 
@@ -151,7 +123,7 @@ def test_create_workout_exercise():
     assert data["notes"] == "Pause all reps"
 
 
-def test_create_workout_exercise_with_missing_day_returns_404():
+def test_create_workout_exercise_with_missing_day_returns_404(override_current_user):
     exercise = create_test_exercise(name=f"Squat {uuid4().hex}")
 
     response = client.post(
@@ -167,7 +139,7 @@ def test_create_workout_exercise_with_missing_day_returns_404():
     assert response.json()["detail"] == "Workout day not found"
 
 
-def test_create_workout_exercise_with_missing_exercise_returns_404():
+def test_create_workout_exercise_with_missing_exercise_returns_404(override_current_user):
     setup = create_test_workout_day_setup()
 
     response = client.post(
@@ -183,7 +155,7 @@ def test_create_workout_exercise_with_missing_exercise_returns_404():
     assert response.json()["detail"] == "Exercise not found"
 
 
-def test_list_workout_exercises():
+def test_list_workout_exercises(override_current_user):
     setup = create_test_workout_day_setup()
 
     exercise_1 = create_test_exercise(name=f"Bench Press {uuid4().hex}")
@@ -214,7 +186,7 @@ def test_list_workout_exercises():
     assert workout_exercise_2["id"] in workout_exercise_ids
 
 
-def test_list_workout_exercises_only_returns_exercises_for_that_day():
+def test_list_workout_exercises_only_returns_exercises_for_that_day(override_current_user):
     setup = create_test_workout_day_setup()
 
     day_2 = create_test_workout_day(
@@ -249,7 +221,7 @@ def test_list_workout_exercises_only_returns_exercises_for_that_day():
     assert day_2_workout_exercise["id"] not in workout_exercise_ids
 
 
-def test_list_workout_exercises_orders_by_exercise_order():
+def test_list_workout_exercises_orders_by_exercise_order(override_current_user):
     setup = create_test_workout_day_setup()
 
     exercise_1 = create_test_exercise(name=f"Exercise A {uuid4().hex}")
@@ -284,14 +256,14 @@ def test_list_workout_exercises_orders_by_exercise_order():
     assert exercise_orders == sorted(exercise_orders)
 
 
-def test_list_workout_exercises_with_missing_day_returns_404():
+def test_list_workout_exercises_with_missing_day_returns_404(override_current_user):
     response = client.get("/workout-days/999999/exercises")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Workout day not found"
 
 
-def test_get_workout_exercise():
+def test_get_workout_exercise(override_current_user):
     setup = create_test_workout_day_setup()
     exercise = create_test_exercise(name=f"Deadlift {uuid4().hex}")
 
@@ -314,14 +286,14 @@ def test_get_workout_exercise():
     assert data["notes"] == "Heavy top set"
 
 
-def test_get_workout_exercise_not_found():
+def test_get_workout_exercise_not_found(override_current_user):
     response = client.get("/workout-exercises/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Workout exercise not found"
 
 
-def test_update_workout_exercise():
+def test_update_workout_exercise(override_current_user):
     setup = create_test_workout_day_setup()
 
     old_exercise = create_test_exercise(name=f"Old Exercise {uuid4().hex}")
@@ -353,7 +325,7 @@ def test_update_workout_exercise():
     assert data["notes"] == "Updated notes"
 
 
-def test_update_workout_exercise_partial_keeps_existing_fields():
+def test_update_workout_exercise_partial_keeps_existing_fields(override_current_user):
     setup = create_test_workout_day_setup()
     exercise = create_test_exercise(name=f"Bench Press {uuid4().hex}")
 
@@ -381,7 +353,7 @@ def test_update_workout_exercise_partial_keeps_existing_fields():
     assert data["notes"] == "Only notes changed"
 
 
-def test_update_workout_exercise_with_missing_exercise_returns_404():
+def test_update_workout_exercise_with_missing_exercise_returns_404(override_current_user):
     setup = create_test_workout_day_setup()
     exercise = create_test_exercise(name=f"Bench Press {uuid4().hex}")
 
@@ -402,7 +374,7 @@ def test_update_workout_exercise_with_missing_exercise_returns_404():
     assert response.json()["detail"] == "Exercise not found"
 
 
-def test_update_workout_exercise_not_found():
+def test_update_workout_exercise_not_found(override_current_user):
     response = client.patch(
         "/workout-exercises/999999",
         json={
@@ -414,7 +386,7 @@ def test_update_workout_exercise_not_found():
     assert response.json()["detail"] == "Workout exercise not found"
 
 
-def test_delete_workout_exercise():
+def test_delete_workout_exercise(override_current_user):
     setup = create_test_workout_day_setup()
     exercise = create_test_exercise(name=f"Dip {uuid4().hex}")
 
@@ -434,8 +406,21 @@ def test_delete_workout_exercise():
     assert get_response.json()["detail"] == "Workout exercise not found"
 
 
-def test_delete_workout_exercise_not_found():
+def test_delete_workout_exercise_not_found(override_current_user):
     response = client.delete("/workout-exercises/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Workout exercise not found"
+
+
+def test_create_workout_exercise_without_auth_returns_401():
+    response = client.post(
+        "/workout-days/999999/exercises",
+        json={
+            "exercise_id": 999999,
+            "exercise_order": 1,
+            "notes": "This should fail without auth",
+        },
+    )
+
+    assert response.status_code == 401

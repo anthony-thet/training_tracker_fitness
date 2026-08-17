@@ -2,17 +2,22 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies.auth_dependencies import get_current_user
+from app.models import User
 from app.schemas.exercise_schema import ExerciseRead, ExerciseCreate, ExerciseUpdate
 from app.services.exercise_service import create_exercise, delete_exercise, update_exercise, list_exercises, get_exercise
+
 
 router = APIRouter(
     prefix="/exercises",
     tags=["exercises"],
 )
 
+
 @router.post("/", response_model=ExerciseRead, status_code=status.HTTP_201_CREATED)
 def create_exercise_route(
     exercise_in: ExerciseCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return create_exercise(db, exercise_in)
@@ -23,6 +28,7 @@ def list_exercises_route(
     search: str | None = None,
     limit: int = 100,
     offset: int = 0,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return list_exercises(
@@ -36,6 +42,7 @@ def list_exercises_route(
 @router.get("/{exercise_id}", response_model=ExerciseRead)
 def get_exercise_route(
     exercise_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return get_exercise(db, exercise_id)
@@ -45,6 +52,7 @@ def get_exercise_route(
 def update_exercise_route(
     exercise_id: int,
     exercise_in: ExerciseUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return update_exercise(db, exercise_id, exercise_in)
@@ -53,6 +61,7 @@ def update_exercise_route(
 @router.delete("/{exercise_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_exercise_route(
     exercise_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     delete_exercise(db, exercise_id)

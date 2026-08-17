@@ -1,33 +1,22 @@
-from typing import List
-
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 
 from app.models import ProgramWeek, WorkoutDay, WorkoutExercise
 from app.models.program_model import Program
-from app.models.user_model import User
 from app.schemas.program_schema import ProgramCreate, ProgramUpdate
 
 
 def create_program(
         db: Session,
-        program_in: ProgramCreate
+        program_in: ProgramCreate,
+        user_id: int,
 ) -> Program:
 
-    user = (
-        db.query(User)
-        .filter(User.id == program_in.user_id)
-        .first()
+    program = Program(
+        user_id=user_id,
+        **program_in.model_dump(),
     )
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-
-    program = Program(**program_in.model_dump())
 
     db.add(program)
 
@@ -46,7 +35,7 @@ def create_program(
 
 def list_programs(
     db: Session,
-    user_id: int | None = None,
+    user_id: int,
     search: str | None = None,
     limit: int = 100,
     offset: int = 0,
@@ -75,6 +64,7 @@ def list_programs(
 def get_program_detail(
     db: Session,
     program_id: int,
+    user_id: int
 ) -> Program:
     program = (
         db.query(Program)
@@ -89,7 +79,10 @@ def get_program_detail(
             .selectinload(WorkoutDay.workout_exercises)
             .selectinload(WorkoutExercise.exercise),
         )
-        .filter(Program.id == program_id)
+        .filter(
+            Program.id == program_id,
+            Program.user_id == user_id,
+        )
         .first()
     )
 
@@ -104,12 +97,15 @@ def get_program_detail(
 
 def get_program(
         db: Session,
-        program_id: int
+        program_id: int,
+        user_id: int
 ) -> Program:
 
     program = (
         db.query(Program)
-        .filter(Program.id == program_id)
+        .filter(
+            Program.id == program_id,
+            Program.user_id == user_id)
         .first()
     )
 
@@ -125,10 +121,11 @@ def get_program(
 def update_program(
         db: Session,
         program_id: int,
-        program_in: ProgramUpdate
+        program_in: ProgramUpdate,
+        user_id: int
 ) -> Program:
 
-    program = get_program(db, program_id)
+    program = get_program(db, program_id, user_id)
 
     update_data = program_in.model_dump(exclude_unset=True)
 
@@ -150,10 +147,11 @@ def update_program(
 
 def delete_program(
         db: Session,
-        program_id: int
+        program_id: int,
+        user_id: int,
 ) -> None:
 
-    program = get_program(db, program_id)
+    program = get_program(db, program_id, user_id)
 
     db.delete(program)
     db.commit()

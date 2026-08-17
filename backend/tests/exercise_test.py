@@ -35,7 +35,7 @@ def create_test_exercise(
     return response.json()
 
 
-def test_create_exercise():
+def test_create_exercise(override_current_user):
     exercise_name = unique_exercise_name()
 
     response = client.post(
@@ -60,7 +60,7 @@ def test_create_exercise():
     assert "id" in data
 
 
-def test_list_exercises():
+def test_list_exercises(override_current_user):
     exercise_name = unique_exercise_name("Squat")
     exercise = create_test_exercise(name=exercise_name)
 
@@ -74,7 +74,7 @@ def test_list_exercises():
     assert any(item["name"] == exercise_name for item in data)
 
 
-def test_list_exercises_with_search():
+def test_list_exercises_with_search(override_current_user):
     exercise_name = unique_exercise_name("Searchable Bench")
     create_test_exercise(name=exercise_name)
 
@@ -88,7 +88,7 @@ def test_list_exercises_with_search():
     assert any(item["name"] == exercise_name for item in data)
 
 
-def test_get_exercise():
+def test_get_exercise(override_current_user):
     exercise = create_test_exercise()
 
     response = client.get(f"/exercises/{exercise['id']}")
@@ -101,14 +101,14 @@ def test_get_exercise():
     assert data["category"] == exercise["category"]
 
 
-def test_get_exercise_not_found():
+def test_get_exercise_not_found(override_current_user):
     response = client.get("/exercises/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Exercise not found"
 
 
-def test_update_exercise():
+def test_update_exercise(override_current_user):
     exercise = create_test_exercise(
         name=unique_exercise_name("Old Exercise"),
         description="Old description",
@@ -130,7 +130,7 @@ def test_update_exercise():
     assert data["description"] == "Updated description"
 
 
-def test_update_exercise_partial_keeps_existing_fields():
+def test_update_exercise_partial_keeps_existing_fields(override_current_user):
     exercise = create_test_exercise(
         category="Strength",
         primary_muscle="Back",
@@ -156,7 +156,7 @@ def test_update_exercise_partial_keeps_existing_fields():
     assert data["description"] == "Only description changed"
 
 
-def test_update_exercise_not_found():
+def test_update_exercise_not_found(override_current_user):
     response = client.patch(
         "/exercises/999999",
         json={
@@ -168,7 +168,7 @@ def test_update_exercise_not_found():
     assert response.json()["detail"] == "Exercise not found"
 
 
-def test_delete_exercise():
+def test_delete_exercise(override_current_user):
     exercise = create_test_exercise(name=unique_exercise_name("Delete Me"))
 
     delete_response = client.delete(f"/exercises/{exercise['id']}")
@@ -180,14 +180,14 @@ def test_delete_exercise():
     assert get_response.status_code == 404
 
 
-def test_delete_exercise_not_found():
+def test_delete_exercise_not_found(override_current_user):
     response = client.delete("/exercises/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Exercise not found"
 
 
-def test_create_duplicate_exercise_returns_409():
+def test_create_duplicate_exercise_returns_409(override_current_user):
     exercise_name = unique_exercise_name("Duplicate Exercise")
 
     create_test_exercise(name=exercise_name)
@@ -205,3 +205,18 @@ def test_create_duplicate_exercise_returns_409():
 
     assert response.status_code == 409
     assert response.json()["detail"] == "An exercise with this name already exists."
+
+
+def test_create_exercise_without_auth_returns_401():
+    response = client.post(
+        "/exercises/",
+        json={
+            "name": unique_exercise_name("Unauthenticated Exercise"),
+            "category": "Strength",
+            "primary_muscle": "Chest",
+            "equipment": "Barbell",
+            "description": "This should fail without auth",
+        },
+    )
+
+    assert response.status_code == 401

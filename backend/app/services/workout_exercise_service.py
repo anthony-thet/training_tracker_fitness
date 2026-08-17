@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models import WorkoutExercise
+from app.models import WorkoutExercise, WorkoutDay, ProgramWeek, Program
 from app.schemas.workout_exercise_schema import WorkoutExerciseCreate, WorkoutExerciseUpdate
 from app.services.workout_day_service import get_workout_day
 from app.services.exercise_service import get_exercise
@@ -11,9 +11,10 @@ def create_workout_exercise(
     db: Session,
     day_id: int,
     workout_exercise_in: WorkoutExerciseCreate,
+    user_id: int,
 ) -> WorkoutExercise:
 
-    workout_day = get_workout_day(db, day_id)
+    workout_day = get_workout_day(db, day_id, user_id)
 
     exercise = get_exercise(db, workout_exercise_in.exercise_id)
 
@@ -34,9 +35,10 @@ def create_workout_exercise(
 def list_workout_exercises(
     db: Session,
     day_id: int,
+    user_id: int,
 ) -> list[WorkoutExercise]:
 
-    get_workout_day(db, day_id)
+    get_workout_day(db, day_id, user_id)
 
     workout_exercises = (
         db.query(WorkoutExercise)
@@ -51,11 +53,18 @@ def list_workout_exercises(
 def get_workout_exercise(
     db: Session,
     workout_exercise_id: int,
+    user_id: int,
 ) -> WorkoutExercise:
 
     workout_exercise = (
         db.query(WorkoutExercise)
-        .filter(WorkoutExercise.id == workout_exercise_id)
+        .join(WorkoutDay, WorkoutExercise.workout_day_id == WorkoutDay.id)
+        .join(ProgramWeek, WorkoutDay.program_week_id == ProgramWeek.id)
+        .join(Program, ProgramWeek.program_id == Program.id)
+        .filter(
+            WorkoutExercise.id == workout_exercise_id,
+            Program.user_id == user_id,
+        )
         .first()
     )
 
@@ -72,9 +81,10 @@ def update_workout_exercise(
     db: Session,
     workout_exercise_id: int,
     workout_exercise_in: WorkoutExerciseUpdate,
+    user_id: int,
 ) -> WorkoutExercise:
 
-    workout_exercise = get_workout_exercise(db, workout_exercise_id)
+    workout_exercise = get_workout_exercise(db, workout_exercise_id, user_id)
 
     update_data = workout_exercise_in.model_dump(exclude_unset=True)
 
@@ -94,9 +104,10 @@ def update_workout_exercise(
 def delete_workout_exercise(
     db: Session,
     workout_exercise_id: int,
+    user_id: int,
 ) -> None:
 
-    workout_exercise = get_workout_exercise(db, workout_exercise_id)
+    workout_exercise = get_workout_exercise(db, workout_exercise_id, user_id)
 
     db.delete(workout_exercise)
     db.commit()

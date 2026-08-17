@@ -2,41 +2,15 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from tests.test_database import TestingSessionLocal
 from app.main import app
-from app.models import User
 
 client = TestClient(app)
 
 
-def create_test_user() -> User:
-    db = TestingSessionLocal()
-
-    try:
-        unique_id = uuid4().hex
-
-        user = User(
-            email=f"workoutdaytest_{unique_id}@example.com",
-            username=f"workoutdaytestuser_{unique_id}",
-            password_hash="fake_hashed_password",
-        )
-
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        db.expunge(user)
-
-        return user
-
-    finally:
-        db.close()
-
-
-def create_test_program(user_id: int):
+def create_test_program():
     response = client.post(
         "/programs/",
         json={
-            "user_id": user_id,
             "name": f"Workout Day Test Program {uuid4().hex}",
             "description": "Program used for workout day tests",
         },
@@ -78,9 +52,8 @@ def create_test_workout_day(
     return response.json()
 
 
-def test_create_workout_day():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_create_workout_day(override_current_user):
+    program = create_test_program()
     week = create_test_program_week(program["id"])
 
     response = client.post(
@@ -102,7 +75,7 @@ def test_create_workout_day():
     assert data["notes"] == "Bench-focused day"
 
 
-def test_create_workout_day_with_missing_week_returns_404():
+def test_create_workout_day_with_missing_week_returns_404(override_current_user):
     response = client.post(
         "/program-weeks/999999/days",
         json={
@@ -116,9 +89,8 @@ def test_create_workout_day_with_missing_week_returns_404():
     assert response.json()["detail"] == "Program week not found"
 
 
-def test_list_workout_days():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_list_workout_days(override_current_user):
+    program = create_test_program()
     week = create_test_program_week(program["id"])
 
     day_1 = create_test_workout_day(
@@ -146,9 +118,8 @@ def test_list_workout_days():
     assert day_2["id"] in day_ids
 
 
-def test_list_workout_days_only_returns_days_for_that_week():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_list_workout_days_only_returns_days_for_that_week(override_current_user):
+    program = create_test_program()
 
     week_1 = create_test_program_week(program["id"], week_number=1)
     week_2 = create_test_program_week(program["id"], week_number=2)
@@ -176,9 +147,8 @@ def test_list_workout_days_only_returns_days_for_that_week():
     assert week_2_day["id"] not in day_ids
 
 
-def test_list_workout_days_orders_by_day_order():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_list_workout_days_orders_by_day_order(override_current_user):
+    program = create_test_program()
     week = create_test_program_week(program["id"])
 
     create_test_workout_day(
@@ -209,16 +179,15 @@ def test_list_workout_days_orders_by_day_order():
     assert day_orders == sorted(day_orders)
 
 
-def test_list_workout_days_with_missing_week_returns_404():
+def test_list_workout_days_with_missing_week_returns_404(override_current_user):
     response = client.get("/program-weeks/999999/days")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Program week not found"
 
 
-def test_get_workout_day():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_get_workout_day(override_current_user):
+    program = create_test_program()
     week = create_test_program_week(program["id"])
 
     day = create_test_workout_day(
@@ -240,16 +209,15 @@ def test_get_workout_day():
     assert data["notes"] == "Day to get"
 
 
-def test_get_workout_day_not_found():
+def test_get_workout_day_not_found(override_current_user):
     response = client.get("/workout-days/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Workout day not found"
 
 
-def test_update_workout_day():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_update_workout_day(override_current_user):
+    program = create_test_program()
     week = create_test_program_week(program["id"])
 
     day = create_test_workout_day(
@@ -278,9 +246,8 @@ def test_update_workout_day():
     assert data["notes"] == "Updated notes"
 
 
-def test_update_workout_day_partial_keeps_existing_fields():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_update_workout_day_partial_keeps_existing_fields(override_current_user):
+    program = create_test_program()
     week = create_test_program_week(program["id"])
 
     day = create_test_workout_day(
@@ -307,7 +274,7 @@ def test_update_workout_day_partial_keeps_existing_fields():
     assert data["notes"] == "Only notes changed"
 
 
-def test_update_workout_day_not_found():
+def test_update_workout_day_not_found(override_current_user):
     response = client.patch(
         "/workout-days/999999",
         json={
@@ -319,9 +286,8 @@ def test_update_workout_day_not_found():
     assert response.json()["detail"] == "Workout day not found"
 
 
-def test_delete_workout_day():
-    user = create_test_user()
-    program = create_test_program(user.id)
+def test_delete_workout_day(override_current_user):
+    program = create_test_program()
     week = create_test_program_week(program["id"])
 
     day = create_test_workout_day(
@@ -340,8 +306,21 @@ def test_delete_workout_day():
     assert get_response.json()["detail"] == "Workout day not found"
 
 
-def test_delete_workout_day_not_found():
+def test_delete_workout_day_not_found(override_current_user):
     response = client.delete("/workout-days/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Workout day not found"
+
+
+def test_create_workout_day_without_auth_returns_401():
+    response = client.post(
+        "/program-weeks/999999/days",
+        json={
+            "name": "Unauthenticated Day",
+            "day_order": 1,
+            "notes": "This should fail without auth",
+        },
+    )
+
+    assert response.status_code == 401
