@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.models import WorkoutDay, ProgramWeek, Program
 from app.schemas.workout_day_schema import WorkoutDayCreate, WorkoutDayUpdate
@@ -21,8 +22,16 @@ def create_workout_day(
     )
 
     db.add(workout_day)
-    db.commit()
-    db.refresh(workout_day)
+
+    try:
+        db.commit()
+        db.refresh(workout_day)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Workout day with this day order already exists for this program week.",
+        )
 
     return workout_day
 

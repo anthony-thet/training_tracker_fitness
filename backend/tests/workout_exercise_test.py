@@ -424,3 +424,57 @@ def test_create_workout_exercise_without_auth_returns_401():
     )
 
     assert response.status_code == 401
+
+
+def test_create_duplicate_workout_exercise_order_returns_409(override_current_user):
+    setup = create_test_workout_day_setup()
+
+    exercise_1 = create_test_exercise(name=f"Bench Press {uuid4().hex}")
+    exercise_2 = create_test_exercise(name=f"Pull Up {uuid4().hex}")
+
+    create_test_workout_exercise(
+        day_id=setup["day"]["id"],
+        exercise_id=exercise_1["id"],
+        exercise_order=1,
+    )
+
+    response = client.post(
+        f"/workout-days/{setup['day']['id']}/exercises",
+        json={
+            "exercise_id": exercise_2["id"],
+            "exercise_order": 1,
+            "notes": "Duplicate exercise order",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Workout exercise with this exercise order already exists for this workout day."
+
+
+def test_same_exercise_order_allowed_for_different_workout_days(override_current_user):
+    setup = create_test_workout_day_setup()
+
+    day_2 = create_test_workout_day(
+        week_id=setup["week"]["id"],
+        name="Lower Day",
+        day_order=2,
+    )
+
+    exercise_1 = create_test_exercise(name=f"Bench Press {uuid4().hex}")
+    exercise_2 = create_test_exercise(name=f"Squat {uuid4().hex}")
+
+    workout_exercise_1 = create_test_workout_exercise(
+        day_id=setup["day"]["id"],
+        exercise_id=exercise_1["id"],
+        exercise_order=1,
+    )
+
+    workout_exercise_2 = create_test_workout_exercise(
+        day_id=day_2["id"],
+        exercise_id=exercise_2["id"],
+        exercise_order=1,
+    )
+
+    assert workout_exercise_1["exercise_order"] == 1
+    assert workout_exercise_2["exercise_order"] == 1
+    assert workout_exercise_1["workout_day_id"] != workout_exercise_2["workout_day_id"]

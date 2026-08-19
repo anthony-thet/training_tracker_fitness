@@ -22,8 +22,16 @@ def create_planned_set(
     )
 
     db.add(planned_set)
-    db.commit()
-    db.refresh(planned_set)
+
+    try:
+        db.commit()
+        db.refresh(planned_set)
+    except:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Planned set with this set order already exists for this workout exercise."
+        )
 
     return planned_set
 

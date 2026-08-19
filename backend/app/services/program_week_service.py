@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.models import ProgramWeek, Program
 from app.schemas.program_week_schema import ProgramWeekCreate, ProgramWeekUpdate
@@ -21,8 +22,16 @@ def create_program_week(
     )
 
     db.add(program_week)
-    db.commit()
-    db.refresh(program_week)
+
+    try:
+        db.commit()
+        db.refresh(program_week)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Program week with this week number already exists for this program.",
+        )
 
     return program_week
 

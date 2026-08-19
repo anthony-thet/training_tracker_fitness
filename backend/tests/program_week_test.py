@@ -290,3 +290,45 @@ def test_create_program_week_without_auth_returns_401():
     )
 
     assert response.status_code == 401
+
+
+def test_create_duplicate_program_week_number_returns_409(override_current_user):
+    program = create_test_program()
+
+    create_test_program_week(
+        program_id=program["id"],
+        week_number=1,
+        notes="Original week 1",
+    )
+
+    response = client.post(
+        f"/programs/{program['id']}/weeks",
+        json={
+            "week_number": 1,
+            "notes": "Duplicate week 1",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Program week with this week number already exists for this program."
+
+
+def test_same_week_number_allowed_for_different_programs(override_current_user):
+    program_1 = create_test_program()
+    program_2 = create_test_program()
+
+    week_1 = create_test_program_week(
+        program_id=program_1["id"],
+        week_number=1,
+        notes="Program 1 week 1",
+    )
+
+    week_2 = create_test_program_week(
+        program_id=program_2["id"],
+        week_number=1,
+        notes="Program 2 week 1",
+    )
+
+    assert week_1["week_number"] == 1
+    assert week_2["week_number"] == 1
+    assert week_1["program_id"] != week_2["program_id"]

@@ -324,3 +324,49 @@ def test_create_workout_day_without_auth_returns_401():
     )
 
     assert response.status_code == 401
+
+
+def test_create_duplicate_workout_day_order_returns_409(override_current_user):
+    program = create_test_program()
+    week = create_test_program_week(program["id"])
+
+    create_test_workout_day(
+        week_id=week["id"],
+        name="Upper 1",
+        day_order=1,
+    )
+
+    response = client.post(
+        f"/program-weeks/{week['id']}/days",
+        json={
+            "name": "Lower 1",
+            "day_order": 1,
+            "notes": "Duplicate day order",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Workout day with this day order already exists for this program week."
+
+
+def test_same_day_order_allowed_for_different_program_weeks(override_current_user):
+    program = create_test_program()
+
+    week_1 = create_test_program_week(program["id"], week_number=1)
+    week_2 = create_test_program_week(program["id"], week_number=2)
+
+    day_1 = create_test_workout_day(
+        week_id=week_1["id"],
+        name="Week 1 Day 1",
+        day_order=1,
+    )
+
+    day_2 = create_test_workout_day(
+        week_id=week_2["id"],
+        name="Week 2 Day 1",
+        day_order=1,
+    )
+
+    assert day_1["day_order"] == 1
+    assert day_2["day_order"] == 1
+    assert day_1["program_week_id"] != day_2["program_week_id"]

@@ -263,3 +263,51 @@ def test_list_planned_sets_orders_by_set_order(override_current_user):
     set_orders = [item["set_order"] for item in data]
 
     assert set_orders == sorted(set_orders)
+
+
+def test_create_duplicate_planned_set_order_returns_409(override_current_user):
+    setup = create_test_planned_set_setup(override_current_user)
+
+    create_test_planned_set(
+        workout_exercise_id=setup["workout_exercise"]["id"],
+        set_order=1,
+    )
+
+    response = client.post(
+        f"/workout-exercises/{setup['workout_exercise']['id']}/sets",
+        json={
+            "set_order": 1,
+            "target_reps": 5,
+            "target_weight": 225.0,
+            "target_rpe": 7.0,
+            "notes": "Duplicate set order",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Planned set with this set order already exists for this workout exercise."
+
+
+def test_same_set_order_allowed_for_different_workout_exercises(override_current_user):
+    setup = create_test_planned_set_setup(override_current_user)
+
+    exercise_2 = create_test_exercise(name=f"Second Exercise {uuid4().hex}")
+    workout_exercise_2 = create_test_workout_exercise(
+        day_id=setup["day"]["id"],
+        exercise_id=exercise_2["id"],
+        exercise_order=2,
+    )
+
+    planned_set_1 = create_test_planned_set(
+        workout_exercise_id=setup["workout_exercise"]["id"],
+        set_order=1,
+    )
+
+    planned_set_2 = create_test_planned_set(
+        workout_exercise_id=workout_exercise_2["id"],
+        set_order=1,
+    )
+
+    assert planned_set_1["set_order"] == 1
+    assert planned_set_2["set_order"] == 1
+    assert planned_set_1["workout_exercise_id"] != planned_set_2["workout_exercise_id"]
